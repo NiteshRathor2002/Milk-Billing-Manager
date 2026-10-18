@@ -22,9 +22,9 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2.5">
-            <a href="{{ $whatsAppUrl }}" target="_blank" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-md transition-colors inline-flex items-center space-x-1.5">
+            <button type="button" onclick="handleWhatsAppShare()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-md transition-colors inline-flex items-center space-x-1.5 cursor-pointer">
                 <span>💬 Share on WhatsApp</span>
-            </a>
+            </button>
             <a href="{{ route('bills.pdf.download', $bill->id) }}" class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-colors inline-flex items-center space-x-1">
                 <span>📥 Download PDF</span>
             </a>
@@ -108,4 +108,31 @@
         @endif
     </div>
 </div>
+
+<script>
+async function handleWhatsAppShare() {
+    const defaultUrl = @json($whatsAppUrl);
+    const downloadPdfUrl = @json(route('bills.pdf.download', $bill->id));
+    const billTitle = @json('Bill_' . $bill->bill_number . '_' . $bill->billing_month);
+    const messageText = @json($whatsAppMessage);
+
+    if (navigator.share && navigator.canShare) {
+        try {
+            const res = await fetch(downloadPdfUrl);
+            const blob = await res.blob();
+            const file = new File([blob], billTitle + '.pdf', { type: 'application/pdf' });
+            if (navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: billTitle,
+                    text: messageText
+                });
+                return;
+            }
+        } catch (err) {}
+    }
+
+    window.open(defaultUrl, '_blank');
+}
+</script>
 @endsection

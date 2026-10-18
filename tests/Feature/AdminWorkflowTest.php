@@ -143,6 +143,10 @@ class AdminWorkflowTest extends TestCase
         $waResponse = $this->get(route('bills.whatsapp', $bill->id));
         $waResponse->assertStatus(302);
         $this->assertStringContainsString('wa.me', $waResponse->headers->get('Location'));
+
+        $publicPdfResponse = $this->get(route('bills.public.pdf', $bill->bill_number));
+        $publicPdfResponse->assertStatus(200);
+        $publicPdfResponse->assertHeader('content-type', 'application/pdf');
     }
 
     public function test_payment_recording_and_settings_update(): void

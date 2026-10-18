@@ -116,6 +116,7 @@ class BillingController extends Controller
     {
         $bill = Bill::with(['customer', 'payments'])->findOrFail($id);
         $whatsAppUrl = $waService->generateWhatsAppUrl($bill);
+        $whatsAppMessage = $waService->generateMessageText($bill);
         $settings = AppSetting::getSettings();
 
         return view('billing.show', [
@@ -123,6 +124,7 @@ class BillingController extends Controller
             'customer' => $bill->customer,
             'snapshot' => $bill->itemized_snapshot,
             'whatsAppUrl' => $whatsAppUrl,
+            'whatsAppMessage' => $whatsAppMessage,
             'settings' => $settings,
         ]);
     }
@@ -144,5 +146,11 @@ class BillingController extends Controller
         $bill = Bill::with('customer')->findOrFail($id);
         $url = $waService->generateWhatsAppUrl($bill);
         return redirect()->away($url);
+    }
+
+    public function publicPdf(string $billNumber, PdfInvoiceService $pdfService)
+    {
+        $bill = Bill::with('customer')->where('bill_number', $billNumber)->firstOrFail();
+        return $pdfService->streamPdf($bill);
     }
 }
