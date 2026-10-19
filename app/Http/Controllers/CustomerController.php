@@ -78,6 +78,10 @@ class CustomerController extends Controller
             $q->orderBy('payment_date', 'desc');
         }])->findOrFail($id);
 
+        foreach ($customer->bills as $bill) {
+            $bill->refreshFinancials();
+        }
+
         $now = Carbon::now();
         $currentMonthCalc = $billingService->getMonthlyCalculation($customer, $now->year, $now->month);
         $settings = AppSetting::getSettings();

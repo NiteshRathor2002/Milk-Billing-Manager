@@ -37,7 +37,14 @@ class PaymentController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        Payment::create($validated);
+        $payment = Payment::create($validated);
+
+        $customer = Customer::find($payment->customer_id);
+        if ($customer) {
+            foreach ($customer->bills as $bill) {
+                $bill->refreshFinancials();
+            }
+        }
 
         return back()->with('success', 'Payment of ' . ($validated['amount']) . ' recorded successfully.');
     }
@@ -45,7 +52,15 @@ class PaymentController extends Controller
     public function destroy($id)
     {
         $payment = Payment::findOrFail($id);
+        $customer = $payment->customer;
         $payment->delete();
+
+        if ($customer) {
+            foreach ($customer->bills as $bill) {
+                $bill->refreshFinancials();
+            }
+        }
+
         return back()->with('success', 'Payment record deleted.');
     }
 }

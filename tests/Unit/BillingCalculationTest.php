@@ -144,4 +144,54 @@ class BillingCalculationTest extends TestCase
         $expectedDue = $expectedMilkCharges + 500.00 - 1000.00;
         $this->assertEquals($expectedDue, $calc['amount_due']);
     }
+
+    public function test_payment_updates_effective_balance_and_bill_financials(): void
+    {
+        $customer = Customer::create([
+            'customer_code' => 'MBS-TEST4',
+            'name' => 'Varun Test',
+            'whatsapp_number' => '+91 9999900004',
+            'daily_quantity' => 2.00,
+            'rate_per_litre' => 90.00,
+            'registration_date' => '2026-10-19',
+            'previous_balance' => 0.00,
+            'status' => 'active',
+        ]);
+
+        $service = new BillingCalculationService();
+        $calc = $service->getMonthlyCalculation($customer, 2026, 10);
+
+        $bill = \App\Models\Bill::create([
+            'customer_id' => $customer->id,
+            'billing_month' => '2026-10',
+            'bill_number' => 'INV-202610-TEST4',
+            'period_start_date' => $calc['period_start'],
+            'period_end_date' => $calc['period_end'],
+            'total_milk_quantity' => $calc['total_milk_quantity'],
+            'milk_charges' => $calc['milk_charges'],
+            'previous_balance' => 0.00,
+            'payments_credited' => 0.00,
+            'amount_due' => $calc['amount_due'],
+            'itemized_snapshot' => $calc,
+            'status' => 'unpaid',
+            'generated_at' => now(),
+        ]);
+
+        $this->assertEquals(2340.00, $customer->fresh()->effective_balance);
+        $this->assertEquals(2340.00, $bill->fresh()->amount_due);
+
+        $payment = Payment::create([
+            'customer_id' => $customer->id,
+            'amount' => 2340.00,
+            'payment_date' => '2026-10-19',
+            'payment_method' => 'upi',
+        ]);
+
+        $bill->refreshFinancials();
+
+        $this->assertEquals(0.00, $customer->fresh()->effective_balance);
+        $this->assertEquals(0.00, $bill->fresh()->amount_due);
+        $this->assertEquals('paid', $bill->fresh()->status);
+        $this->assertEquals(2340.00, $bill->fresh()->payments_credited);
+    }
 }

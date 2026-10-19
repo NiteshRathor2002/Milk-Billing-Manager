@@ -51,4 +51,38 @@ class Bill extends Model
     {
         return $this->hasMany(Payment::class);
     }
+
+    public function refreshFinancials(): void
+    {
+        $startDate = $this->period_start_date ? $this->period_start_date->format('Y-m-d') : null;
+        $endDate = $this->period_end_date ? $this->period_end_date->format('Y-m-d') : null;
+
+        $credited = (float) Payment::where('customer_id', $this->customer_id)
+            ->where(function ($q) use ($startDate, $endDate) {
+                $q->where('bill_id', $this->id);
+                if ($startDate && $endDate) {
+                    $q->orWhere(function ($sq) use ($startDate, $endDate) {
+                        $sq->whereNull('bill_id')
+                            ->whereBetween('payment_date', [$startDate, $endDate]);
+                    });
+                }
+            })
+            ->sum('amount');
+
+        $totalCharges = (float) $this->milk_charges + (float) $this->previous_balance;
+        $amountDue = max(0, round($totalCharges - $credited, 2));
+
+        $status = 'unpaid';
+        if ($amountDue <= 0 && $credited > 0) {
+            $status = 'paid';
+        } elseif ($credited > 0 && $amountDue > 0) {
+            $status = 'partially_paid';
+        }
+
+        $this->update([
+            'payments_credited' => $credited,
+            'amount_due' => $amountDue,
+            'status' => $status,
+        ]);
+    }
 }

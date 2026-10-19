@@ -159,12 +159,13 @@ class BillingCalculationService
             ->first();
 
         if ($pastBill) {
+            $pastBill->refreshFinancials();
             $paymentsAfterPastBill = (float) $customer->payments()
                 ->where('payment_date', '>', $pastBill->period_end_date)
                 ->where('payment_date', '<', $currentMonthStart->format('Y-m-d'))
                 ->sum('amount');
 
-            return (float) $pastBill->amount_due - $paymentsAfterPastBill;
+            return max(0, (float) $pastBill->amount_due - $paymentsAfterPastBill);
         }
 
         $regDate = Carbon::parse($customer->registration_date)->startOfDay();

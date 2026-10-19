@@ -23,6 +23,10 @@ class BillingController extends Controller
             ->orderBy('id', 'desc')
             ->paginate(15);
 
+        foreach ($bills as $b) {
+            $b->refreshFinancials();
+        }
+
         $billedCustomerIds = Bill::where('billing_month', $selectedMonth)
             ->pluck('customer_id')
             ->toArray();
@@ -103,7 +107,7 @@ class BillingController extends Controller
                 'payments_credited' => $calc['payments'],
                 'amount_due' => $calc['amount_due'],
                 'itemized_snapshot' => $calc,
-                'status' => 'unpaid',
+                'status' => $calc['amount_due'] <= 0 && $calc['payments'] > 0 ? 'paid' : ($calc['payments'] > 0 ? 'partially_paid' : 'unpaid'),
                 'generated_at' => now(),
             ]
         );
@@ -115,6 +119,9 @@ class BillingController extends Controller
     public function show($id, WhatsAppShareService $waService)
     {
         $bill = Bill::with(['customer', 'payments'])->findOrFail($id);
+        $bill->refreshFinancials();
+        $bill->refresh();
+
         $whatsAppUrl = $waService->generateWhatsAppUrl($bill);
         $whatsAppMessage = $waService->generateMessageText($bill);
         $settings = AppSetting::getSettings();

@@ -51,15 +51,8 @@ class Customer extends Model
 
     public function getEffectiveBalanceAttribute(): float
     {
-        $billsTotal = $this->bills()->sum('amount_due');
-        $paymentsTotal = $this->payments()->sum('amount');
-        if ($this->bills()->count() === 0) {
-            return (float) $this->previous_balance - (float) $paymentsTotal;
-        }
-        $latestBill = $this->bills()->latest('period_end_date')->first();
-        $paymentsAfterLatestBill = $this->payments()
-            ->where('payment_date', '>', $latestBill->period_end_date)
-            ->sum('amount');
-        return (float) $latestBill->amount_due - (float) $paymentsAfterLatestBill;
+        $totalDebits = (float) $this->previous_balance + (float) $this->bills()->sum('milk_charges');
+        $totalCredits = (float) $this->payments()->sum('amount');
+        return round($totalDebits - $totalCredits, 2);
     }
 }
